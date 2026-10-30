@@ -15,8 +15,8 @@ export const pool = new Pool({
 
 // Orden oficial de competencia (16 equipos).
 export const TEAMS = [
-  'GRIAU', 'GEECO', 'GAD', 'DAI', 'OC', 'GITI', 'GCP', 'GRYGE',
-  'GRF', 'GL', 'GI', 'GOF', 'GS', 'GEFPP', 'ONEC', 'GRIFI',
+  'GI', 'GL', 'GRYGE', 'GRIAU', 'GRIFI', 'ONEC', 'GITI', 'OC',
+  'GCP', 'GRF', 'GS', 'GEFPP', 'GAD', 'DAI', 'GOF', 'GEECO',
 ];
 
 export async function initDb() {
@@ -39,6 +39,18 @@ export async function initDb() {
     await pool.query(`INSERT INTO teams (name, run_order) VALUES ${values}`, params);
     console.log('✓ 16 equipos sembrados en la base de datos.');
   }
+
+  // Sincroniza el orden de participación con la lista TEAMS en cada arranque.
+  // Así, si se cambia el orden en el código, la base existente se actualiza sola
+  // (conserva los tiempos ya registrados).
+  for (let i = 0; i < TEAMS.length; i++) {
+    await pool.query(
+      `INSERT INTO teams (name, run_order) VALUES ($1, $2)
+       ON CONFLICT (name) DO UPDATE SET run_order = EXCLUDED.run_order`,
+      [TEAMS[i], i + 1]
+    );
+  }
+  console.log('✓ Orden de participación sincronizado.');
 }
 
 // Convierte M:SS:CC (centésimas) a milisegundos. Ej: "4:55:67" -> 295670
