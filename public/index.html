@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RETO AGUA — Resultados</title>
+<style>
+  :root {
+    --deep: #031a2e;
+    --mid: #06345a;
+    --aqua: #4fd1ff;
+    --aqua-bright: #a6ecff;
+    --sky: #6ab2e8;
+    --card-border: #5fd4ff;
+    --time-color: #c9f3ff;
+    --gold: #ffe27a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    font-family: 'Arial Rounded MT Bold', 'Arial', sans-serif;
+    background:
+      radial-gradient(ellipse 80% 55% at 50% 0%, rgba(110,200,255,0.35), transparent 70%),
+      radial-gradient(ellipse 120% 70% at 50% 110%, rgba(0,40,80,0.9), transparent),
+      linear-gradient(180deg, #0a4a7a 0%, #06345a 35%, #031a2e 100%);
+    color: #fff;
+    height: 100vh;
+    position: relative;
+    user-select: none;
+  }
+
+  /* Rayos de luz bajo el agua */
+  .rays {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.18;
+    background: repeating-linear-gradient(100deg,
+      transparent 0 6vw, rgba(180,235,255,0.5) 6vw 7vw, transparent 7vw 13vw);
+    mask-image: linear-gradient(180deg, #000 0%, transparent 65%);
+    -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 65%);
+    animation: sway 9s ease-in-out infinite alternate;
+  }
+  @keyframes sway { from { transform: translateX(-2vw) skewX(-3deg); } to { transform: translateX(2vw) skewX(3deg); } }
+
+  /* Burbujas */
+  .bubbles { position: fixed; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
+  .bubbles span {
+    position: absolute; bottom: -10vh; border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9), rgba(160,225,255,0.25) 40%, rgba(160,225,255,0.05) 70%);
+    border: 1px solid rgba(200,240,255,0.45);
+    animation: rise linear infinite;
+  }
+  @keyframes rise {
+    0% { transform: translate(0, 0); opacity: 0; }
+    10% { opacity: 0.8; }
+    50% { transform: translate(1.5vw, -55vh); }
+    100% { transform: translate(-1vw, -115vh); opacity: 0; }
+  }
+
+  .wrap {
+    position: relative; z-index: 5;
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 1.5vh 3vw;
+  }
+
+  /* Cabecera: logo + cronómetro + controles */
+  .header {
+    display: flex; align-items: center; justify-content: center;
+    gap: 3vw; width: 100%; height: 22vh; margin-bottom: 1vh;
+  }
+  .logo-img {
+    height: 21vh; width: auto; max-width: 32vw; object-fit: contain;
+    filter: drop-shadow(0 0 2.2vh rgba(120,210,255,0.55));
+  }
+  .clock-box { display: flex; flex-direction: column; align-items: center; }
+  .big-clock {
+    font-family: 'Arial', sans-serif;
+    font-variant-numeric: tabular-nums; font-weight: 900;
+    font-size: 15vh; line-height: 1; letter-spacing: 0.03em;
+    color: #fff;
+    text-shadow: 0 0 2.6vh rgba(120,215,255,0.95), 0 0 0.8vh rgba(166,236,255,0.9);
+  }
+  .big-clock.running { color: #b6f5c8; text-shadow: 0 0 2.8vh rgba(120,240,150,0.7), 0 0 0.8vh rgba(160,255,190,0.9); }
+  .big-clock.stopped { color: var(--gold); text-shadow: 0 0 2.8vh rgba(255,210,90,0.7); }
+  .turn-label {
+    margin-top: 0.6vh; font-size: 3vh; letter-spacing: 0.25em; font-weight: 900;
+    color: var(--aqua-bright); text-shadow: 0 0 1.6vh rgba(124,220,253,0.9);
+  }
+  .turn-label b { color: #fff; letter-spacing: 0.1em; }
+
+  /* Panel de controles (operador) */
+  .controls {
+    display: flex; flex-direction: column; gap: 1vh; align-items: stretch;
+    min-width: 19vw; padding: 1.4vh 1.4vw;
+    background: rgba(3,26,46,0.55); border: 0.25vh solid rgba(95,212,255,0.6);
+    border-radius: 2vh; box-shadow: 0 0 2vh rgba(79,209,255,0.25);
+    backdrop-filter: blur(4px);
+  }
+  .controls.hidden { display: none; }
+  .controls label { font-size: 1.5vh; letter-spacing: 0.2em; color: var(--aqua-bright); }
+  .controls select {
+    font: inherit; font-size: 2.4vh; font-weight: 900; padding: 0.6vh 0.8vw;
+    background: #04223c; color: #fff; border: 0.2vh solid var(--card-border);
+    border-radius: 1vh; cursor: pointer;
+  }
+  .controls button {
+    font: inherit; font-weight: 900; cursor: pointer; border: none; color: #fff;
+    border-radius: 1.2vh; letter-spacing: 0.08em; transition: filter .12s, transform .05s;
+  }
+  .controls button:active { transform: scale(0.97); }
+  .controls button:hover { filter: brightness(1.12); }
+  .controls button:disabled { opacity: 0.35; cursor: default; filter: none; }
+  .controls .btn-main { font-size: 3.8vh; padding: 1.3vh 1vw; }
+  .btn-start { background: linear-gradient(180deg,#3cc46a,#1c8040); box-shadow: 0 0 2vh rgba(60,196,106,0.5); }
+  .btn-stop  { background: linear-gradient(180deg,#f0574f,#b0262a); box-shadow: 0 0 2vh rgba(240,87,79,0.55); }
+  .row2 { display: flex; gap: 0.6vw; }
+  .row2 button { flex: 1; font-size: 2.1vh; padding: 1vh 0.6vw; }
+  .btn-save  { background: linear-gradient(180deg,#2fa8e6,#156ea6); }
+  .btn-reset { background: linear-gradient(180deg,#4b6c8f,#2c4866); }
+  .keys { font-size: 1.3vh; color: #8fc6e6; text-align: center; letter-spacing: 0.05em; }
+
+  /* Lista de tarjetas */
+  .board { width: 92%; max-width: 1800px; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .viewport { flex: 1; min-height: 0; overflow: hidden; position: relative; }
+  .track { display: flex; flex-direction: column; gap: 1.4vh; will-change: transform; }
+
+  .row {
+    position: relative; display: grid; grid-template-columns: 13% 1fr auto;
+    align-items: center; height: 15.5vh; flex-shrink: 0; padding: 0 4% 0 0;
+    border-radius: 8vh;
+    background: linear-gradient(100deg, rgba(4,40,70,0.92), rgba(10,75,120,0.85));
+    border: 0.4vh solid var(--card-border);
+    box-shadow: 0 0 1.8vh rgba(95,212,255,0.5), inset 0 1.2vh 2.5vh rgba(180,235,255,0.12), inset 0 -1vh 2.5vh rgba(0,20,40,0.5);
+    overflow: hidden;
+  }
+  /* reflejo tipo gota */
+  .row::before {
+    content: ''; position: absolute; left: 3%; right: 30%; top: 0.8vh; height: 3.2vh;
+    border-radius: 4vh; background: linear-gradient(180deg, rgba(255,255,255,0.22), transparent);
+    pointer-events: none;
+  }
+  .row .pos {
+    font-weight: 900; font-size: 10vh; text-align: center; color: var(--aqua-bright);
+    text-shadow: 0 0 1.6vh rgba(124,220,253,0.9);
+  }
+  .row .name {
+    font-weight: 900; letter-spacing: 0.08em; font-size: 6.5vh; color: var(--aqua-bright);
+    text-shadow: 0 0 1.2vh rgba(124,220,253,0.7); white-space: nowrap;
+  }
+  .row .time {
+    font-family: 'Arial', sans-serif; font-weight: 900; letter-spacing: 0.04em; font-size: 6.5vh;
+    color: var(--time-color); text-shadow: 0 0 1.2vh rgba(156,224,255,0.8);
+    text-align: right; font-variant-numeric: tabular-nums;
+  }
+  .row.empty .time { color: #5d87a8; text-shadow: none; opacity: 0.6; }
+  .row.top1 { border-color: var(--gold); box-shadow: 0 0 2.6vh rgba(255,210,90,0.6), inset 0 1.2vh 2.5vh rgba(255,240,180,0.12); }
+  .row.top1 .pos { color: var(--gold); text-shadow: 0 0 1.8vh rgba(255,210,90,0.9); }
+  .row.turn { border-color: #b6f5c8; animation: turnGlow 1.6s ease-in-out infinite; }
+  .row.turn .name::after { content: '  EN TURNO'; font-size: 2.4vh; letter-spacing: 0.2em; color: #b6f5c8; vertical-align: middle; }
+  @keyframes turnGlow { 0%,100% { box-shadow: 0 0 1.4vh rgba(120,240,150,0.4); } 50% { box-shadow: 0 0 3.4vh rgba(120,240,150,0.9); } }
+
+  .scroll-hint {
+    text-align: center; margin-top: 1vh; color: var(--aqua-bright); font-weight: 900;
+    letter-spacing: 0.2em; font-size: 2.2vh; text-shadow: 0 0 1.2vh rgba(124,220,253,0.7);
+  }
+  .scroll-hint .arrow { font-size: 3.4vh; display: block; animation: bob 1.4s ease-in-out infinite; }
+  @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(0.8vh)} }
+
+  .live-dot {
+    position: fixed; top: 2vh; right: 1.5vw; z-index: 10; display: flex; align-items: center; gap: 0.5vw;
+    font-size: 1.8vh; font-weight: bold; color: var(--aqua-bright); opacity: 0.75;
+  }
+  .live-dot i { width: 1.2vh; height: 1.2vh; border-radius: 50%; background: #4ade80; box-shadow: 0 0 8px #4ade80; animation: pulse 1.5s infinite; }
+  .live-dot.off i { background: #f0574f; box-shadow: 0 0 8px #f0574f; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* Aviso tras guardar */
+  .toast {
+    position: fixed; left: 50%; top: 24vh; transform: translateX(-50%) scale(0.9); z-index: 30;
+    padding: 1.6vh 3vw; border-radius: 2vh; font-size: 3.4vh; font-weight: 900; letter-spacing: 0.08em;
+    background: rgba(3,26,46,0.92); border: 0.3vh solid var(--card-border); color: #fff;
+    box-shadow: 0 0 3vh rgba(79,209,255,0.6); opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) scale(1); }
+  .toast.err { border-color: #f0574f; box-shadow: 0 0 3vh rgba(240,87,79,0.6); }
+
+  /* Modal (PIN / confirmación) */
+  .modal-bg { position: fixed; inset: 0; z-index: 40; background: rgba(1,12,24,0.7); display: none; align-items: center; justify-content: center; }
+  .modal-bg.show { display: flex; }
+  .modal {
+    background: #04223c; border: 0.3vh solid var(--card-border); border-radius: 2vh; padding: 3vh 2.5vw;
+    min-width: 28vw; text-align: center; box-shadow: 0 0 4vh rgba(79,209,255,0.4);
+  }
+  .modal p { font-size: 2.6vh; margin-bottom: 2vh; color: var(--aqua-bright); line-height: 1.35; }
+  .modal input {
+    width: 100%; font-size: 3.4vh; padding: 1vh; text-align: center; letter-spacing: 0.5em; margin-bottom: 2vh;
+    background: #021628; color: #fff; border: 0.2vh solid var(--card-border); border-radius: 1vh;
+  }
+  .modal .btns { display: flex; gap: 1vw; justify-content: center; }
+  .modal button { font: inherit; font-weight: 900; font-size: 2.4vh; padding: 1.2vh 2vw; border: none; border-radius: 1.2vh; color: #fff; cursor: pointer; }
+</style>
+</head>
+<body>
+  <div class="rays"></div>
+  <div class="bubbles" id="bubbles"></div>
+  <div class="live-dot" id="live"><i></i> EN VIVO</div>
+
+  <div class="wrap">
+    <div class="header">
+      <img src="/img/reto_agua.png" alt="RETO AGUA" class="logo-img">
+      <div class="clock-box">
+        <div class="big-clock" id="bigClock">0:00:00</div>
+        <div class="turn-label">EN TURNO: <b id="turnName">—</b></div>
+      </div>
+      <div class="controls" id="controls">
+        <label for="teamSel">EQUIPO EN TURNO</label>
+        <select id="teamSel"></select>
+        <button class="btn-main btn-start" id="btnMain">▶ INICIAR</button>
+        <div class="row2">
+          <button class="btn-save" id="btnSave" disabled>✓ GUARDAR</button>
+          <button class="btn-reset" id="btnReset" disabled>↺ REINICIAR</button>
+        </div>
+        <div class="keys">ESPACIO iniciar/detener · ENTER guardar · H ocultar panel</div>
+      </div>
+    </div>
+
+    <div class="board">
+      <div class="viewport"><div class="track" id="track"></div></div>
+      <div class="scroll-hint" id="hint"><span class="arrow">▼</span>MÁS RESULTADOS</div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="modal-bg" id="modalBg">
+    <div class="modal">
+      <p id="modalText"></p>
+      <input type="password" id="modalInput" inputmode="numeric" maxlength="8" placeholder="PIN">
+      <div class="btns">
+        <button class="btn-save" id="modalOk">Aceptar</button>
+        <button class="btn-reset" id="modalCancel">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // =====================================================================
+  //  CRONÓMETRO LOCAL
+  //  Corre 100% en este navegador: iniciar/detener es instantáneo porque
+  //  no espera respuesta del servidor. Solo el tiempo final se envía.
+  // =====================================================================
+  const $ = (id) => document.getElementById(id);
+  const bigClock = $('bigClock'), btnMain = $('btnMain'), btnSave = $('btnSave'),
+        btnReset = $('btnReset'), teamSel = $('teamSel'), turnName = $('turnName');
+
+  // Estado: base acumulada + marca de inicio. Se guarda en localStorage para
+  // sobrevivir a una recarga accidental de la página.
+  let sw = { running: false, baseMs: 0, startedAt: null };
+  try { const s = JSON.parse(localStorage.getItem('ra_sw')); if (s) sw = s; } catch (e) {}
+  const persist = () => { try { localStorage.setItem('ra_sw', JSON.stringify(sw)); } catch (e) {} };
+
+  function elapsed() {
+    return sw.baseMs + (sw.running ? Date.now() - sw.startedAt : 0);
+  }
+  function fmt(ms) {
+    if (ms < 0) ms = 0;
+    const totalCent = Math.floor(ms / 10);
+    const cent = totalCent % 100;
+    const totalSec = Math.floor(totalCent / 100);
+    return Math.floor(totalSec / 60) + ':' + String(totalSec % 60).padStart(2, '0') + ':' + String(cent).padStart(2, '0');
+  }
+
+  function toggle() {
+    const now = Date.now();               // se captura ANTES de cualquier otra cosa
+    if (sw.running) {
+      sw.baseMs += now - sw.startedAt;
+      sw.running = false; sw.startedAt = null;
+    } else {
+      sw.running = true; sw.startedAt = now;
+    }
+    persist(); updateUi();
+  }
+  function resetClock() {
+    sw = { running: false, baseMs: 0, startedAt: null };
+    persist(); updateUi();
+  }
+
+  function updateUi() {
+    const stoppedWithTime = !sw.running && sw.baseMs > 0;
+    bigClock.classList.toggle('running', sw.running);
+    bigClock.classList.toggle('stopped', stoppedWithTime);
+    if (sw.running) { btnMain.textContent = '■ DETENER'; btnMain.className = 'btn-main btn-stop'; }
+    else { btnMain.textContent = sw.baseMs > 0 ? '▶ CONTINUAR' : '▶ INICIAR'; btnMain.className = 'btn-main btn-start'; }
+    btnSave.disabled = !stoppedWithTime || !teamSel.value;
+    btnReset.disabled = sw.running || sw.baseMs === 0;
+    teamSel.disabled = sw.running;
+  }
+
+  function tick() { bigClock.textContent = fmt(elapsed()); requestAnimationFrame(tick); }
+  requestAnimationFrame(tick);
+
+  // pointerdown en lugar de click: dispara al tocar, sin esperar a soltar.
+  btnMain.addEventListener('pointerdown', (e) => { e.preventDefault(); toggle(); });
+  btnReset.addEventListener('click', async () => {
+    if (await ask('¿Reiniciar el cronómetro a 0:00:00 sin guardar?')) resetClock();
+  });
+  btnSave.addEventListener('click', saveCurrent);
+  teamSel.addEventListener('change', () => { teamSel.blur(); turnName.textContent = teamSel.value; updateUi(); rerender(); });
+
+  document.addEventListener('keydown', (e) => {
+    if ($('modalBg').classList.contains('show')) return;
+    if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) toggle(); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (!btnSave.disabled) saveCurrent(); }
+    else if (e.key === 'h' || e.key === 'H') { $('controls').classList.toggle('hidden'); }
+  });
+
+  // =====================================================================
+  //  PIN y modal
+  // =====================================================================
+  let PIN = localStorage.getItem('ra_pin') || '';
+
+  function modal(text, withInput) {
+    return new Promise((resolve) => {
+      $('modalText').textContent = text;
+      const inp = $('modalInput');
+      inp.style.display = withInput ? 'block' : 'none'; inp.value = '';
+      $('modalBg').classList.add('show');
+      if (withInput) setTimeout(() => inp.focus(), 50);
+      const done = (val) => {
+        $('modalBg').classList.remove('show');
+        $('modalOk').onclick = $('modalCancel').onclick = inp.onkeydown = null;
+        resolve(val);
+      };
+      $('modalOk').onclick = () => done(withInput ? inp.value : true);
+      $('modalCancel').onclick = () => done(withInput ? null : false);
+      inp.onkeydown = (e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter') { e.preventDefault(); done(inp.value); }
+        if (e.key === 'Escape') done(null);
+      };
+    });
+  }
+  const ask = (text) => modal(text, false);
+
+  async function ensurePin(force) {
+    if (PIN && !force) return true;
+    const pin = await modal(force ? 'PIN incorrecto. Ingresa el PIN de operador:' : 'Ingresa el PIN de operador para guardar tiempos:', true);
+    if (!pin) return false;
+    const r = await fetch('/api/verify-pin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin }) });
+    if (!r.ok) return ensurePin(true);
+    PIN = pin; localStorage.setItem('ra_pin', pin);
+    return true;
+  }
+
+  // =====================================================================
+  //  GUARDAR TIEMPO DEL EQUIPO EN TURNO
+  // =====================================================================
+  let saving = false;
+  async function saveCurrent() {
+    if (saving || sw.running || sw.baseMs === 0) return;
+    saving = true;
+    try { await doSave(); } finally { saving = false; updateUi(); }
+  }
+  async function doSave() {
+    const team = teamSel.value;
+    const time = fmt(sw.baseMs);
+    const existing = teams.find(t => t.name === team);
+    if (existing && existing.hasTime) {
+      if (!(await ask(team + ' ya tiene ' + existing.time + '. ¿Reemplazar por ' + time + '?'))) return;
+    }
+    if (!(await ensurePin())) return;
+    btnSave.disabled = true;
+    try {
+      let r = await post('/api/time', { team, time });
+      if (r.status === 401 && (await ensurePin(true))) r = await post('/api/time', { team, time });
+      if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Error al guardar'); }
+      toast('✓ ' + team + '  ' + time);
+      resetClock();
+      autoAdvance = true;          // al recargar el ranking, pasa al siguiente equipo sin tiempo
+      await load();
+    } catch (err) {
+      toast('⚠ ' + err.message + ' — el tiempo NO se perdió, intenta de nuevo', true);
+    }
+  }
+  function post(url, body) {
+    return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-pin': PIN }, body: JSON.stringify(body) });
+  }
+
+  let toastTimer;
+  function toast(text, err) {
+    const t = $('toast'); t.textContent = text; t.className = 'toast show' + (err ? ' err' : '');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), err ? 5000 : 2500);
+  }
+
+  // =====================================================================
+  //  RANKING (misma lógica que Reto Speed)
+  // =====================================================================
+  const track = $('track'), hint = $('hint');
+  let teams = [], lastSig = '', autoAdvance = true, scrollTimer = null;
+
+  function fillSelector() {
+    const byOrder = [...teams].sort((a, b) => a.runOrder - b.runOrder);
+    let current = teamSel.value;
+    if (autoAdvance || !current) {
+      const next = byOrder.find(t => !t.hasTime);
+      current = next ? next.name : byOrder[byOrder.length - 1].name;
+      autoAdvance = false;
+    }
+    teamSel.innerHTML = byOrder.map(t =>
+      '<option value="' + t.name + '">' + t.runOrder + '. ' + t.name + (t.hasTime ? '  ✓ ' + t.time : '') + '</option>'
+    ).join('');
+    teamSel.value = current;
+    turnName.textContent = current;
+    updateUi();
+  }
+
+  function render() {
+    const turn = teamSel.value;
+    track.innerHTML = '';
+    teams.forEach((t) => {
+      const row = document.createElement('div');
+      row.className = 'row' + (t.position === 1 && t.hasTime ? ' top1' : '') + (t.hasTime ? '' : ' empty') + (t.name === turn && !t.hasTime ? ' turn' : '');
+      row.innerHTML = '<div class="pos">' + t.position + '</div><div class="name">' + t.name + '</div><div class="time">' + (t.time || '--:--:--') + '</div>';
+      track.appendChild(row);
+    });
+    startAutoScroll();
+  }
+  function rerender() { if (teams.length) render(); }
+
+  function startAutoScroll() {
+    if (scrollTimer) clearInterval(scrollTimer);
+    const viewport = track.parentElement;
+    const overflow = track.scrollHeight - viewport.clientHeight;
+    track.style.transform = 'translateY(0)';
+    if (overflow <= 4) { hint.style.display = 'none'; return; }
+    hint.style.display = 'block';
+    let y = 0, dir = 1, pause = 90;
+    scrollTimer = setInterval(() => {
+      if (pause > 0) { pause--; return; }
+      y += dir * 0.6;
+      if (y >= overflow) { y = overflow; dir = -1; pause = 60; }
+      if (y <= 0) { y = 0; dir = 1; pause = 90; }
+      track.style.transform = 'translateY(' + (-y) + 'px)';
+    }, 30);
+  }
+
+  async function load() {
+    try {
+      const res = await fetch('/api/ranking');
+      const data = await res.json();
+      $('live').classList.remove('off');
+      const sig = JSON.stringify(data);
+      if (sig !== lastSig || autoAdvance) {
+        lastSig = sig; teams = data;
+        fillSelector(); render();
+      }
+    } catch (e) { $('live').classList.add('off'); }
+  }
+
+  load();
+  setInterval(load, 1500);   // también recoge correcciones hechas desde /control
+  window.addEventListener('resize', rerender);
+  updateUi();
+
+  // Burbujas decorativas
+  (function () {
+    const box = $('bubbles');
+    for (let i = 0; i < 26; i++) {
+      const b = document.createElement('span');
+      const size = 0.6 + Math.random() * 2.6;
+      b.style.width = b.style.height = size + 'vh';
+      b.style.left = Math.random() * 100 + 'vw';
+      b.style.animationDuration = (9 + Math.random() * 12) + 's';
+      b.style.animationDelay = (-Math.random() * 20) + 's';
+      box.appendChild(b);
+    }
+  })();
+</script>
+</body>
+</html>
